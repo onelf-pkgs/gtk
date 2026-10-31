@@ -1,0 +1,16 @@
+# GTK 3 for onelf packages: the toolkit, its image loaders and their
+# data an application pins under [sysroot.sets.gtk3] and fetches at
+# launch.
+#
+# The control repository, onelf-pkgs/.github, bumps the sources here when
+# upstream releases and resets `release` to 1. Raise `release` by hand
+# when the recipe changes and the sources do not. Releases are tagged
+# v<gtk version>-<release>.
+name = "gtk"
+release = 1
+arches = ["x86_64", "aarch64"]
+
+[sources.gtk]
+version = "3.24.52"
+url = "https://download.gnome.org/sources/gtk/3.24/gtk-{version}.tar.xz"
+sha256 = "80931fa472a77b9a164f6740e3c0b444fac6770054632d35a7ff9d679e5e7b9f"
