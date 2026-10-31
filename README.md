@@ -16,6 +16,8 @@ toolkit.
 - The GSettings schemas of GTK and gsettings-desktop-schemas, compiled;
   the dconf GSettings backend, so settings read and write.
 - The Adwaita and hicolor icon themes, with their caches.
+- The compiled shared-mime-info database, by which gdk-pixbuf tells an
+  icon's format, so a host without one still draws icons.
 
 Locales, headers, documentation, introspection data and the host-side
 wiring (the packages' binaries, D-Bus service files, thumbnailers) stay
@@ -30,8 +32,8 @@ The set is not built from source. It is the closure of Void Linux's
 `adwaita-icon-theme` and `hicolor-icon-theme` packages on Void glibc,
 whose official images cover x86_64 and aarch64, shaped into the tree
 `onelf sysroot pack-set` takes: libraries under `lib/`, modules where
-the runtime looks for them, caches rewritten to paths relative to the
-tree root so the runtime can absolutise them at launch. The version in
+the runtime looks for them, each cache naming its modules relative to
+itself so the runtime can absolutise them at launch. The version in
 `package.toml` tracks GNOME's gtk3 releases; the GNOME tarball it names
 is only provenance for the version the release is tagged with.
 

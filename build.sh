@@ -33,7 +33,7 @@ xbps-install -Syu > /dev/null
 xbps-install -y \
     binutils findutils \
     gtk+3 gdk-pixbuf librsvg dconf gsettings-desktop-schemas \
-    adwaita-icon-theme hicolor-icon-theme > /dev/null
+    adwaita-icon-theme hicolor-icon-theme shared-mime-info > /dev/null
 
 version=$(sed -n 's/^version = "\(.*\)"/\1/p' package.toml)
 repo_version=$(xbps-query gtk+3 | awk '$1 == "pkgver:" { sub(/^gtk\+3-/, "", $2); sub(/_[0-9]*$/, "", $2); print $2 }')
@@ -134,24 +134,30 @@ close "$tree"
 
 find "$tree/lib" -name '*.so*' -type f -exec strip --strip-unneeded {} +
 
-# The caches name their modules as paths under the tree root, which the
-# runtime absolutises against the package root at launch; the query
-# tools canonicalise whatever they are given, so the tree prefix is cut
-# again. The schema sources stay out: what an application reads is the
-# compiled file.
-pixbuf_version=$(cd "$tree/lib/gdk-pixbuf-2.0" && set -- * && [ $# -eq 1 ] && echo "$1")
-gtk_version=$(cd "$tree/lib/gtk-3.0" && set -- */ && [ $# -eq 1 ] && echo "${1%/}")
+# Each cache sits where GTK keeps it, in its version directory, and names
+# its modules relative to itself, which the runtime absolutises at
+# launch. The query tools canonicalise whatever they are given, so the
+# directory is cut again. The schema sources stay out: what an
+# application reads is the compiled file.
+pixbuf_dir=$tree/lib/gdk-pixbuf-2.0/$(cd "$tree/lib/gdk-pixbuf-2.0" && set -- * && [ $# -eq 1 ] && echo "$1")
+gtk_dir=$tree/lib/gtk-3.0/$(cd "$tree/lib/gtk-3.0" && set -- */ && [ $# -eq 1 ] && echo "${1%/}")
+(
+    cd "$pixbuf_dir"
+    LD_LIBRARY_PATH="$tree/lib" gdk-pixbuf-query-loaders loaders/*.so > loaders.cache
+    sed -i "s|$pixbuf_dir/||g" loaders.cache
+)
+(
+    cd "$gtk_dir"
+    LD_LIBRARY_PATH="$tree/lib" gtk-query-immodules-3.0 immodules/*.so > immodules.cache
+    sed -i "s|$gtk_dir/||g" immodules.cache
+)
+# gdk-pixbuf tells an icon's format by its MIME type, so without the
+# database a host lacking one draws no icons. Only the compiled files at
+# its top are read for that; the per-type directories hold descriptions.
+mkdir -p "$tree/share/mime"
+find /usr/share/mime -maxdepth 1 -type f -exec cp {} "$tree/share/mime/" \;
 (
     cd "$tree"
-    LD_LIBRARY_PATH="$tree/lib" gdk-pixbuf-query-loaders \
-        "lib/gdk-pixbuf-2.0/$pixbuf_version/loaders/"*.so \
-        > "lib/gdk-pixbuf-2.0/$pixbuf_version/loaders.cache"
-    LD_LIBRARY_PATH="$tree/lib" gtk-query-immodules-3.0 \
-        "lib/gtk-3.0/$gtk_version/immodules/"*.so \
-        > "lib/gtk-3.0/immodules.cache"
-    sed -i "s|$tree/||g" \
-        "lib/gdk-pixbuf-2.0/$pixbuf_version/loaders.cache" \
-        "lib/gtk-3.0/immodules.cache"
     glib-compile-schemas share/glib-2.0/schemas
     rm share/glib-2.0/schemas/*.gschema.xml
     gio-querymodules lib/gio/modules
